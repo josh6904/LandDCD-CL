@@ -1,325 +1,337 @@
-<!-- SIDEBAR (No Logo - Clean Text Header) -->
-<aside>
-    <div class="brand">
-        <!-- Logo Removed -->
-        <div class="brand-text">
-            <div class="brand-name">DCD</div>
-            <div class="brand-subtitle">Possess The Land</div>
-        </div>
-    </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCD Dashboard</title>
+    <!-- This link MUST match your CSS file name exactly -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
 
-    <nav class="nav-group">
-        <div class="nav-item active" onclick="app.router('dashboard')">
-            <span class="nav-icon">📊</span>
-            <span class="nav-label">Dashboard</span>
-        </div>
-        <div class="nav-item" onclick="app.router('pledges')">
-            <span class="nav-icon">🤝</span>
-            <span class="nav-label">Pledges</span>
-        </div>
-        <div class="nav-item" onclick="app.router('ledger')">
-            <span class="nav-icon">💰</span>
-            <span class="nav-label">Ledger</span>
-        </div>
-        <div class="nav-item" onclick="app.router('expenses')">
-            <span class="nav-icon">📉</span>
-            <span class="nav-label">Expenses</span>
-        </div>
-        <div class="nav-item" onclick="app.router('tribes')">
-            <span class="nav-icon">🏆</span>
-            <span class="nav-label">Depts</span>
-        </div>
-        <div class="nav-item" onclick="app.router('settings')">
-            <span class="nav-icon">⚙️</span>
-            <span class="nav-label">Settings</span>
-        </div>
-    </nav>
-</aside>
-
-<!-- MAIN CONTENT -->
-<main id="main-container">
-    
-    <!-- DASHBOARD -->
-    <section id="view-dashboard">
-        <div class="page-header">
-            <div>
-                <h1>Overview</h1>
-                <p class="page-subtitle">Real-time tracking for <strong>DCD Possess The Land</strong></p>
-            </div>
-            <div class="header-actions">
-                <button class="btn btn-secondary" onclick="window.print()">🖨️ Print</button>
-                <button class="btn btn-primary" onclick="app.openModal('manual-cash')">💵 Manual Cash</button>
-                <button class="btn btn-primary" onclick="app.openModal('pledge')">+ New Pledge</button>
+    <!-- SIDEBAR -->
+    <aside>
+        <div class="brand">
+            <div class="brand-text">
+                <div class="brand-name">DCD</div>
+                <div class="brand-subtitle">Possess The Land</div>
             </div>
         </div>
 
-        <!-- KPI CARDS -->
-        <div class="kpi-grid">
-            <div class="kpi-card kpi-success">
-                <div class="kpi-label">Gross Cash</div>
-                <div class="kpi-value" id="dash-cash">KES 0</div>
-                <div class="kpi-icon">💰</div>
+        <nav class="nav-group">
+            <div class="nav-item active" onclick="app.router('dashboard')">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">Dashboard</span>
             </div>
-            <div class="kpi-card kpi-danger">
-                <div class="kpi-label">Expenses</div>
-                <div class="kpi-value" id="dash-expenses">KES 0</div>
-                <div class="kpi-icon">📉</div>
+            <div class="nav-item" onclick="app.router('pledges')">
+                <span class="nav-icon">🤝</span>
+                <span class="nav-label">Pledges</span>
             </div>
-            <div class="kpi-card kpi-info">
-                <div class="kpi-label">Net Cash</div>
-                <div class="kpi-value" id="dash-net">KES 0</div>
-                <div class="kpi-icon">💵</div>
+            <div class="nav-item" onclick="app.router('ledger')">
+                <span class="nav-icon">💰</span>
+                <span class="nav-label">Ledger</span>
             </div>
-            <div class="kpi-card kpi-primary">
-                <div class="kpi-label">Pledges</div>
-                <div class="kpi-value" id="dash-pledges">KES 0</div>
-                <div class="kpi-icon">🎯</div>
+            <div class="nav-item" onclick="app.router('expenses')">
+                <span class="nav-icon">📉</span>
+                <span class="nav-label">Expenses</span>
             </div>
-            <!-- Cash Efficiency Card (Donut Chart Container) -->
-            <div class="kpi-card kpi-accent" style="display: flex; align-items: center; justify-content: center; padding: 0; overflow: hidden;">
-                <div style="width: 100%; height: 100%; position: relative;">
-                    <svg id="chart-efficiency" class="chart" viewBox="0 0 36 36"></svg>
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
-                        <div id="dash-rate" style="font-size: 0.9rem; font-weight: 800;">0%</div>
-                        <div style="font-size: 0.5rem; color: #9CA3AF; text-transform: uppercase; font-weight: 700;">Efficiency</div>
+            <div class="nav-item" onclick="app.router('tribes')">
+                <span class="nav-icon">🏆</span>
+                <span class="nav-label">Depts</span>
+            </div>
+            <div class="nav-item" onclick="app.router('settings')">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-label">Settings</span>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main id="main-container">
+        
+        <!-- DASHBOARD -->
+        <section id="view-dashboard">
+            <div class="page-header">
+                <div>
+                    <h1>Overview</h1>
+                    <p class="page-subtitle">Real-time tracking for <strong>DCD Possess The Land</strong></p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" onclick="window.print()">🖨️ Print</button>
+                    <button class="btn btn-primary" onclick="app.openModal('manual-cash')">💵 Manual Cash</button>
+                    <button class="btn btn-primary" onclick="app.openModal('pledge')">+ New Pledge</button>
+                </div>
+            </div>
+
+            <!-- KPI CARDS -->
+            <div class="kpi-grid">
+                <div class="kpi-card kpi-success">
+                    <div class="kpi-label">Gross Cash</div>
+                    <div class="kpi-value" id="dash-cash">KES 0</div>
+                    <div class="kpi-icon">💰</div>
+                </div>
+                <div class="kpi-card kpi-danger">
+                    <div class="kpi-label">Expenses</div>
+                    <div class="kpi-value" id="dash-expenses">KES 0</div>
+                    <div class="kpi-icon">📉</div>
+                </div>
+                <div class="kpi-card kpi-info">
+                    <div class="kpi-label">Net Cash</div>
+                    <div class="kpi-value" id="dash-net">KES 0</div>
+                    <div class="kpi-icon">💵</div>
+                </div>
+                <div class="kpi-card kpi-primary">
+                    <div class="kpi-label">Pledges</div>
+                    <div class="kpi-value" id="dash-pledges">KES 0</div>
+                    <div class="kpi-icon">🎯</div>
+                </div>
+                <!-- Cash Efficiency Card (Donut Chart Container) -->
+                <div class="kpi-card kpi-accent" style="display: flex; align-items: center; justify-content: center; padding: 0; overflow: hidden;">
+                    <div style="width: 100%; height: 100%; position: relative;">
+                        <svg id="chart-efficiency" class="chart" viewBox="0 0 36 36"></svg>
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                            <div id="dash-rate" style="font-size: 0.9rem; font-weight: 800;">0%</div>
+                            <div style="font-size: 0.5rem; color: #9CA3AF; text-transform: uppercase; font-weight: 700;">Efficiency</div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="content-grid">
-            <!-- Department Performance (Bar Chart Container) -->
+            <div class="content-grid">
+                <!-- Department Performance (Bar Chart Container) -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <div class="chart-title">Department Performance</div>
+                        <button class="btn btn-sm btn-secondary" onclick="app.router('tribes')">View All</button>
+                    </div>
+                    <!-- SVG Bar Chart injected here -->
+                    <div id="chart-departments" style="height: 250px; width: 100%;"></div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <div class="chart-title">Recent Activity</div>
+                    </div>
+                    <div id="recent-activity" style="display: flex; flex-direction: column; gap: 12px;">
+                        <p class="text-muted" style="text-align: center; padding: 20px;">No recent activity.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Phase Progress (Linear) -->
             <div class="chart-container">
                 <div class="chart-header">
-                    <div class="chart-title">Department Performance</div>
-                    <button class="btn btn-sm btn-secondary" onclick="app.router('tribes')">View All</button>
+                    <div class="chart-title">Phases & Targets</div>
+                    <button class="btn btn-sm btn-secondary" onclick="app.router('settings')">Edit</button>
                 </div>
-                <!-- SVG Bar Chart injected here -->
-                <div id="chart-departments" style="height: 250px; width: 100%;"></div>
+                <div id="phase-list"></div>
             </div>
+        </section>
 
-            <!-- Recent Activity -->
+        <!-- PLEDGES VIEW -->
+        <section id="view-pledges" class="hidden">
+            <div class="page-header">
+                <h1>Member Pledges</h1>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" onclick="document.getElementById('csv-upload').click()">📂 Import CSV</button>
+                    <input type="file" id="csv-upload" accept=".csv" style="display: none;" onchange="app.handleCSVUpload(this)">
+                    <button class="btn btn-primary" onclick="app.openModal('pledge')">+ New Pledge</button>
+                </div>
+            </div>
+            <div class="search-container" style="margin-bottom: 20px;">
+                <input type="text" id="pledge-search" placeholder="🔍 Search members..." onkeyup="app.renderPledges()">
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Dept</th>
+                            <th class="text-right">Pledged</th>
+                            <th class="text-right">Paid</th>
+                            <th class="text-right">Balance</th>
+                            <th class="text-right">Status</th>
+                            <th class="text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pledges-table-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- EXPENSES VIEW -->
+        <section id="view-expenses" class="hidden">
+            <div class="page-header">
+                <h1>Expenses Tracker</h1>
+                <div class="header-actions">
+                    <button class="btn btn-danger" onclick="app.openModal('expense')">📉 Record Expense</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Category</th>
+                            <th>Description</th>
+                            <th class="text-right">Amount</th>
+                            <th class="text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expenses-table-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- LEDGER VIEW -->
+        <section id="view-ledger" class="hidden">
+            <div class="page-header">
+                <h1>Transaction Ledger</h1>
+                <button class="btn btn-secondary" onclick="app.exportCSV('ledger')">📥 Export Audit</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Ref</th>
+                            <th>Details</th>
+                            <th>Type</th>
+                            <th class="text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ledger-table-body"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- DEPARTMENTS VIEW -->
+        <section id="view-tribes" class="hidden">
+            <div class="page-header">
+                <h1>Department Performance</h1>
+            </div>
+            <div id="tribes-container" class="tribes-grid"></div>
+        </section>
+
+        <!-- SETTINGS VIEW -->
+        <section id="view-settings" class="hidden">
+            <div class="page-header">
+                <h1>Admin Settings</h1>
+            </div>
             <div class="chart-container">
-                <div class="chart-header">
-                    <div class="chart-title">Recent Activity</div>
+                <h3 style="margin-bottom: 16px;">Backup & Restore</h3>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="app.downloadBackup()">💾 Download Backup</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('restore-input').click()">📂 Restore</button>
+                    <input type="file" id="restore-input" accept=".json" style="display: none;" onchange="app.restoreBackup(this)">
                 </div>
-                <div id="recent-activity" style="display: flex; flex-direction: column; gap: 12px;">
-                    <p class="text-muted" style="text-align: center; padding: 20px;">No recent activity.</p>
+            </div>
+            
+            <div class="chart-container">
+                <h3 style="margin-bottom: 16px;">Manage Phases</h3>
+                <form onsubmit="app.addPhaseFromForm(event)" style="margin-bottom: 24px;">
+                    <div class="form-grid">
+                        <input type="text" id="phase-name" required placeholder="Phase Name">
+                        <input type="date" id="phase-date" required>
+                    </div>
+                    <div id="dept-targets-container" class="form-grid" style="margin-top: 16px;"></div>
+                    <div style="margin-top: 16px; font-weight: 700; text-align: right;">
+                        Target: <span id="total-target-preview">KES 0</span>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px;">Create Phase</button>
+                </form>
+                <div id="settings-phase-list"></div>
+            </div>
+
+            <div class="chart-container" style="border-color: #FEE2E2;">
+                <h3 style="color: var(--danger); margin-bottom: 16px;">Danger Zone</h3>
+                <p class="text-muted" style="margin-bottom: 16px;">Permanently delete all data.</p>
+                <button class="btn btn-danger" onclick="app.hardReset()">Reset All Data</button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODALS -->
+    <div class="modal-overlay" id="modal-pledge">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>New Pledge</h3>
+                <button class="btn btn-sm btn-secondary" onclick="app.closeModal('pledge')">&times;</button>
+            </div>
+            <form onsubmit="app.submitPledge(event)">
+                <div class="modal-body">
+                    <div style="margin-bottom: 12px;"><label>Member Name</label><input type="text" name="name" required></div>
+                    <div style="margin-bottom: 12px;"><label>Department</label><select name="department" id="modal-dept-select" required></select></div>
+                    <div style="margin-bottom: 12px;"><label>Amount (KES)</label><input type="number" name="amount" required min="1" step="0.01"></div>
                 </div>
-            </div>
-        </div>
-        
-        <!-- Phase Progress (Linear) -->
-        <div class="chart-container">
-            <div class="chart-header">
-                <div class="chart-title">Phases & Targets</div>
-                <button class="btn btn-sm btn-secondary" onclick="app.router('settings')">Edit</button>
-            </div>
-            <div id="phase-list"></div>
-        </div>
-    </section>
-
-    <!-- PLEDGES VIEW -->
-    <section id="view-pledges" class="hidden">
-        <div class="page-header">
-            <h1>Member Pledges</h1>
-            <div class="header-actions">
-                <button class="btn btn-secondary" onclick="document.getElementById('csv-upload').click()">📂 Import CSV</button>
-                <input type="file" id="csv-upload" accept=".csv" style="display: none;" onchange="app.handleCSVUpload(this)">
-                <button class="btn btn-primary" onclick="app.openModal('pledge')">+ New Pledge</button>
-            </div>
-        </div>
-        <div class="search-container" style="margin-bottom: 20px;">
-            <input type="text" id="pledge-search" placeholder="🔍 Search members..." onkeyup="app.renderPledges()">
-        </div>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Dept</th>
-                        <th class="text-right">Pledged</th>
-                        <th class="text-right">Paid</th>
-                        <th class="text-right">Balance</th>
-                        <th class="text-right">Status</th>
-                        <th class="text-right">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="pledges-table-body"></tbody>
-            </table>
-        </div>
-    </section>
-
-    <!-- EXPENSES VIEW -->
-    <section id="view-expenses" class="hidden">
-        <div class="page-header">
-            <h1>Expenses Tracker</h1>
-            <div class="header-actions">
-                <button class="btn btn-danger" onclick="app.openModal('expense')">📉 Record Expense</button>
-            </div>
-        </div>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Category</th>
-                        <th>Description</th>
-                        <th class="text-right">Amount</th>
-                        <th class="text-right">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="expenses-table-body"></tbody>
-            </table>
-        </div>
-    </section>
-
-    <!-- LEDGER VIEW -->
-    <section id="view-ledger" class="hidden">
-        <div class="page-header">
-            <h1>Transaction Ledger</h1>
-            <button class="btn btn-secondary" onclick="app.exportCSV('ledger')">📥 Export Audit</button>
-        </div>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Ref</th>
-                        <th>Details</th>
-                        <th>Type</th>
-                        <th class="text-right">Amount</th>
-                    </tr>
-                </thead>
-                <tbody id="ledger-table-body"></tbody>
-            </table>
-        </div>
-    </section>
-
-    <!-- DEPARTMENTS VIEW -->
-    <section id="view-tribes" class="hidden">
-        <div class="page-header">
-            <h1>Department Performance</h1>
-        </div>
-        <div id="tribes-container" class="tribes-grid"></div>
-    </section>
-
-    <!-- SETTINGS VIEW -->
-    <section id="view-settings" class="hidden">
-        <div class="page-header">
-            <h1>Admin Settings</h1>
-        </div>
-        <div class="chart-container">
-            <h3 style="margin-bottom: 16px;">Backup & Restore</h3>
-            <div class="header-actions">
-                <button class="btn btn-primary" onclick="app.downloadBackup()">💾 Download Backup</button>
-                <button class="btn btn-secondary" onclick="document.getElementById('restore-input').click()">📂 Restore</button>
-                <input type="file" id="restore-input" accept=".json" style="display: none;" onchange="app.restoreBackup(this)">
-            </div>
-        </div>
-        
-        <div class="chart-container">
-            <h3 style="margin-bottom: 16px;">Manage Phases</h3>
-            <form onsubmit="app.addPhaseFromForm(event)" style="margin-bottom: 24px;">
-                <div class="form-grid">
-                    <input type="text" id="phase-name" required placeholder="Phase Name">
-                    <input type="date" id="phase-date" required>
-                </div>
-                <div id="dept-targets-container" class="form-grid" style="margin-top: 16px;"></div>
-                <div style="margin-top: 16px; font-weight: 700; text-align: right;">
-                    Target: <span id="total-target-preview">KES 0</span>
-                </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px;">Create Phase</button>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="app.closeModal('pledge')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
             </form>
-            <div id="settings-phase-list"></div>
         </div>
+    </div>
 
-        <div class="chart-container" style="border-color: #FEE2E2;">
-            <h3 style="color: var(--danger); margin-bottom: 16px;">Danger Zone</h3>
-            <p class="text-muted" style="margin-bottom: 16px;">Permanently delete all data.</p>
-            <button class="btn btn-danger" onclick="app.hardReset()">Reset All Data</button>
+    <div class="modal-overlay" id="modal-expense">
+        <div class="modal">
+            <div class="modal-header"><h3>New Expense</h3><button class="btn btn-sm btn-secondary" onclick="app.closeModal('expense')">&times;</button></div>
+            <form onsubmit="app.submitExpense(event)">
+                <div class="modal-body">
+                    <div style="margin-bottom: 12px;"><label>Category</label><select id="expense-category" required><option>General</option><option>Logistics</option><option>Venue</option><option>Marketing</option></select></div>
+                    <div style="margin-bottom: 12px;"><label>Description</label><input type="text" id="expense-desc" required></div>
+                    <div style="margin-bottom: 12px;"><label>Amount</label><input type="number" id="expense-amount" required min="1"></div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="app.closeModal('expense')">Cancel</button><button type="submit" class="btn btn-danger">Record</button></div>
+            </form>
         </div>
-    </section>
+    </div>
 
-</main>
-
-<!-- MODALS -->
-<div class="modal-overlay" id="modal-pledge">
-    <div class="modal">
-        <div class="modal-header">
-            <h3>New Pledge</h3>
-            <button class="btn btn-sm btn-secondary" onclick="app.closeModal('pledge')">&times;</button>
+    <div class="modal-overlay" id="modal-edit-pledge">
+        <div class="modal">
+            <div class="modal-header"><h3>Edit Pledge</h3><button class="btn btn-sm btn-secondary" onclick="app.closeModal('edit-pledge')">&times;</button></div>
+            <form onsubmit="app.updatePledgeSubmit(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="edit-id">
+                    <div style="margin-bottom: 12px;"><label>Name</label><input type="text" name="name" required></div>
+                    <div style="margin-bottom: 12px;"><label>Department</label><select name="department" id="edit-dept-select" required></select></div>
+                    <div style="margin-bottom: 12px;"><label>Amount</label><input type="number" name="amount" required min="1"></div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="app.closeModal('edit-pledge')">Cancel</button><button type="submit" class="btn btn-primary">Update</button></div>
+            </form>
         </div>
-        <form onsubmit="app.submitPledge(event)">
+    </div>
+
+    <div class="modal-overlay" id="modal-manual-cash">
+        <div class="modal">
+            <div class="modal-header"><h3>Record Cash</h3><button class="btn btn-sm btn-secondary" onclick="app.closeModal('manual-cash')">&times;</button></div>
+            <form onsubmit="app.submitManualCash(event)">
+                <div class="modal-body">
+                    <div style="margin-bottom: 12px;"><label>Payer</label><input type="text" id="cash-name" list="member-list" required><datalist id="member-list"></datalist></div>
+                    <div style="margin-bottom: 12px;"><label>Dept</label><select id="cash-dept" required></select></div>
+                    <div style="margin-bottom: 12px;"><label>Amount</label><input type="number" id="cash-amount" required min="1"></div>
+                    <div style="margin-bottom: 12px;"><label>Ref</label><input type="text" id="cash-ref"></div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="app.closeModal('manual-cash')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-sms-parse">
+        <div class="modal">
+            <div class="modal-header"><h3>SMS Parser</h3><button class="btn btn-sm btn-secondary" onclick="app.closeModal('sms-parse')">&times;</button></div>
             <div class="modal-body">
-                <div style="margin-bottom: 12px;"><label>Member Name</label><input type="text" name="name" required></div>
-                <div style="margin-bottom: 12px;"><label>Department</label><select name="department" id="modal-dept-select" required></select></div>
-                <div style="margin-bottom: 12px;"><label>Amount (KES)</label><input type="number" name="amount" required min="1" step="0.01"></div>
+                <textarea id="sms-input" style="width:100%; height:150px; border:1px solid #ccc; border-radius:8px; padding:10px;" placeholder="Paste SMS here..."></textarea>
+                <div id="staged-area" class="hidden" style="margin-top:16px; max-height:200px; overflow-y:auto;"></div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="app.closeModal('pledge')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
-        </form>
-    </div>
-</div>
-
-<div class="modal-overlay" id="modal-expense">
-    <div class="modal">
-        <div class="modal-header"><h3>New Expense</h3><button class="btn btn-sm btn-secondary" onclick="app.closeModal('expense')">&times;</button></div>
-        <form onsubmit="app.submitExpense(event)">
-            <div class="modal-body">
-                <div style="margin-bottom: 12px;"><label>Category</label><select id="expense-category" required><option>General</option><option>Logistics</option><option>Venue</option><option>Marketing</option></select></div>
-                <div style="margin-bottom: 12px;"><label>Description</label><input type="text" id="expense-desc" required></div>
-                <div style="margin-bottom: 12px;"><label>Amount</label><input type="number" id="expense-amount" required min="1"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="app.processSMS()">Extract</button>
+                <button type="button" class="btn btn-primary hidden" onclick="app.commitStaged()">Commit</button>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="app.closeModal('expense')">Cancel</button><button type="submit" class="btn btn-danger">Record</button></div>
-        </form>
-    </div>
-</div>
-
-<div class="modal-overlay" id="modal-edit-pledge">
-    <div class="modal">
-        <div class="modal-header"><h3>Edit Pledge</h3><button class="btn btn-sm btn-secondary" onclick="app.closeModal('edit-pledge')">&times;</button></div>
-        <form onsubmit="app.updatePledgeSubmit(event)">
-            <div class="modal-body">
-                <input type="hidden" id="edit-id">
-                <div style="margin-bottom: 12px;"><label>Name</label><input type="text" name="name" required></div>
-                <div style="margin-bottom: 12px;"><label>Department</label><select name="department" id="edit-dept-select" required></select></div>
-                <div style="margin-bottom: 12px;"><label>Amount</label><input type="number" name="amount" required min="1"></div>
-            </div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="app.closeModal('edit-pledge')">Cancel</button><button type="submit" class="btn btn-primary">Update</button></div>
-        </form>
-    </div>
-</div>
-
-<div class="modal-overlay" id="modal-manual-cash">
-    <div class="modal">
-        <div class="modal-header"><h3>Record Cash</h3><button class="btn btn-sm btn-secondary" onclick="app.closeModal('manual-cash')">&times;</button></div>
-        <form onsubmit="app.submitManualCash(event)">
-            <div class="modal-body">
-                <div style="margin-bottom: 12px;"><label>Payer</label><input type="text" id="cash-name" list="member-list" required><datalist id="member-list"></datalist></div>
-                <div style="margin-bottom: 12px;"><label>Dept</label><select id="cash-dept" required></select></div>
-                <div style="margin-bottom: 12px;"><label>Amount</label><input type="number" id="cash-amount" required min="1"></div>
-                <div style="margin-bottom: 12px;"><label>Ref</label><input type="text" id="cash-ref"></div>
-            </div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="app.closeModal('manual-cash')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
-        </form>
-    </div>
-</div>
-
-<div class="modal-overlay" id="modal-sms-parse">
-    <div class="modal">
-        <div class="modal-header"><h3>SMS Parser</h3><button class="btn btn-sm btn-secondary" onclick="app.closeModal('sms-parse')">&times;</button></div>
-        <div class="modal-body">
-            <textarea id="sms-input" style="width:100%; height:150px; border:1px solid #ccc; border-radius:8px; padding:10px;" placeholder="Paste SMS here..."></textarea>
-            <div id="staged-area" class="hidden" style="margin-top:16px; max-height:200px; overflow-y:auto;"></div>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="app.processSMS()">Extract</button>
-            <button type="button" class="btn btn-primary hidden" onclick="app.commitStaged()">Commit</button>
         </div>
     </div>
-</div>
 
-<div id="toast-container"></div>
-<script src="script.js"></script>
+    <div id="toast-container"></div>
+    
+    <!-- This link MUST match your JS file name exactly -->
+    <script src="script.js"></script>
 </body>
 </html>
