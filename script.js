@@ -79,6 +79,7 @@ const store = {
             if (saved) {
                 this.data = JSON.parse(saved);
             } else {
+                // Initialize default phase if no data exists
                 this.data.phases.push({
                     id: Date.now(),
                     name: "Initial Phase",
@@ -97,10 +98,11 @@ const store = {
     save() {
         try {
             localStorage.setItem(DB_KEY, JSON.stringify(this.data));
+            // Trigger UI update via app reference
+            if(app && app.render) app.render();
         } catch (e) {
-            app.showToast("Error saving data: Storage might be full.", 'error');
+            if(app && app.showToast) app.showToast("Error saving data: Storage might be full.", 'error');
         }
-        app.render();
     },
 
     addPledge(name, dept, amount) {
@@ -226,6 +228,19 @@ window.app = {
         if(el) el.classList.add('open');
     },
 
+    // Helper to open Manual Cash modal pre-filled for a specific pledge
+    openPaymentModal(pledgeId) {
+        const pledge = store.data.pledges.find(p => p.id === pledgeId);
+        if (!pledge) return;
+
+        document.getElementById('cash-name').value = pledge.name;
+        document.getElementById('cash-dept').value = pledge.department;
+        document.getElementById('cash-amount').value = '';
+        document.getElementById('cash-ref').value = '';
+        
+        this.openModal('manual-cash');
+    },
+
     closeModal(type) {
         const el = document.getElementById(`modal-${type}`);
         if(el) el.classList.remove('open');
@@ -275,7 +290,7 @@ window.app = {
         let total = 0;
         document.querySelectorAll('.dept-target-input').forEach(inp => total += Number(inp.value) || 0);
         const preview = document.getElementById('total-target-preview');
-        if(preview) preview.innerText = app.formatMoney(total);
+        if(preview) preview.innerText = this.formatMoney(total);
     },
 
     addPhaseFromForm(e) {
@@ -369,7 +384,7 @@ window.app = {
         store.addExpense(desc, amount, category);
         this.closeModal('expense');
         e.target.reset();
-        this.showToast('Expense recorded', 'error'); 
+        this.showToast('Expense recorded', 'error'); // Using error toast color for expenses visually
     },
 
     editPledge(id) {
@@ -409,6 +424,14 @@ window.app = {
     deletePledge(id) {
         if(confirm("Are you sure you want to delete this pledge?")) {
             store.deletePledge(id);
+        }
+    },
+
+    deleteExpense(id) {
+        if(confirm("Are you sure you want to delete this expense record?")) {
+            store.data.expenses = store.data.expenses.filter(e => e.id !== id);
+            store.save();
+            this.showToast('Expense deleted', 'success');
         }
     },
 
@@ -531,6 +554,58 @@ window.app = {
         } catch (err) {
             this.showToast("Error processing file upload.", 'error');
         }
+    },
+
+    exportCSV(type) {
+        let csvContent = "data:text/csv;charset=utf-8,";
+        let filename = "export.csv";
+
+        if (type === 'pledges') {
+            csvContent += "Name,Department,Pledged Amount\r\n";
+            store.data.pledges.forEach(p => {
+                csvContent += `"${p.name}","${p.department}",${p.amount}\r\n`;
+            });
+            filename = "DCD_Pledges.csv";
+        } else if (type === 'expenses') {
+            csvContent += "Date,Category,Description,Amount\r\n";
+            store.data.expenses.forEach(e => {
+                const dateStr = this.formatDate(e.date);
+                csvContent += `"${dateStr}","${e.category}","${e.description}",${e.amount}\r\n`;
+            });
+            filename = "DCD_Expenses.csv";
+        } else if (type === 'ledger') {
+            csvContent += "Date,Type,Name/Description,Method/Category,Amount\r\n";
+            // Combine transactions and expenses
+            const ledger = [
+                ...store.data.transactions.map(t => ({
+                    date: t.date,
+                    type: 'INCOME',
+                    name: t.name,
+                    meta: t.method,
+                    amount: t.amount
+                })),
+                ...store.data.expenses.map(e => ({
+                    date: e.date,
+                    type: 'EXPENSE',
+                    name: e.description,
+                    meta: e.category,
+                    amount: e.amount
+                }))
+            ].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            ledger.forEach(row => {
+                csvContent += `"${this.formatDate(row.date)}","${row.type}","${row.name}","${row.meta}",${row.amount}\r\n`;
+            });
+            filename = "DCD_Ledger.csv";
+        }
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", filename);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
     },
 
     checkDuplicate(name, dept, amount, dateObj) {
@@ -783,6 +858,221 @@ window.app = {
         const tbody = document.getElementById('pledges-table-body');
         const search = document.getElementById('pledge-search').value.toLowerCase();
         let html = '';
+        
         store.data.pledges.forEach(p => {
             if(p.name.toLowerCase().includes(search)) {
-                const
+                const paid = store.data.transactions
+                    .filter(t => t.pledgeId === p.id)
+                    .reduce((sum, t) => sum + t.amount, 0);
+                
+                const balance = p.amount - paid;
+                
+                let statusBadge = '<span class="badge badge-info">Outstanding</span>';
+                if (balance <= 0) {
+                    statusBadge = '<span class="badge badge-success">Paid</span>';
+                } else if (paid > 0) {
+                    statusBadge = '<span class="badge badge-warn">Partial</span>';
+                }
+
+                html += `
+                    <tr>
+                        <td>
+                            <div style="font-weight:600;">${escapeHtml(p.name)}</div>
+                            <small style="color:var(--text-muted); font-size:0.75rem;">Joined: ${this.formatDate(p.date)}</small>
+                        </td>
+                        <td><span class="badge" style="background:#F1F5F9; color:#475569;">${escapeHtml(p.department)}</span></td>
+                        <td class="text-right money">${this.formatMoney(p.amount)}</td>
+                        <td class="text-right money" style="color:var(--primary);">${this.formatMoney(paid)}</td>
+                        <td class="text-right money ${balance > 0 ? 'money-negative' : ''}">${this.formatMoney(balance)}</td>
+                        <td class="text-right">${statusBadge}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-secondary" onclick="app.openPaymentModal('${p.id}')" title="Record Payment">💵 Pay</button>
+                            <button class="btn btn-sm btn-secondary" onclick="app.editPledge('${p.id}')" title="Edit">✏️</button>
+                            <button class="btn btn-sm btn-danger" onclick="app.deletePledge('${p.id}')" title="Delete">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+        
+        tbody.innerHTML = html || '<tr><td colspan="7" class="text-center text-muted">No pledges found.</td></tr>';
+    },
+
+    renderExpenses() {
+        const tbody = document.getElementById('expenses-table-body');
+        let html = '';
+        
+        // Sort by date descending
+        const sorted = [...store.data.expenses].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+        sorted.forEach(e => {
+            html += `
+                <tr>
+                    <td>${this.formatDate(e.date)}</td>
+                    <td><span class="badge badge-warn">${escapeHtml(e.category)}</span></td>
+                    <td>${escapeHtml(e.description)}</td>
+                    <td class="text-right money money-negative">-${this.formatMoney(e.amount)}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-secondary" onclick="app.deleteExpense('${e.id}')">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tbody.innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">No expenses recorded.</td></tr>';
+    },
+
+    renderLedger() {
+        const tbody = document.getElementById('ledger-table-body');
+        
+        // Combine transactions (income) and expenses
+        const ledger = [
+            ...store.data.transactions.map(t => ({
+                id: t.id,
+                date: t.date,
+                ref: t.ref || t.method,
+                name: t.name,
+                type: 'INCOME',
+                amount: t.amount
+            })),
+            ...store.data.expenses.map(e => ({
+                id: e.id,
+                date: e.date,
+                ref: e.category,
+                name: e.description,
+                type: 'EXPENSE',
+                amount: e.amount
+            }))
+        ].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+        let html = '';
+        ledger.forEach(item => {
+            const isIncome = item.type === 'INCOME';
+            html += `
+                <tr>
+                    <td>${this.formatDateTime(item.date)}</td>
+                    <td>${escapeHtml(item.ref)}</td>
+                    <td>${escapeHtml(item.name)}</td>
+                    <td>
+                        <span class="badge ${isIncome ? 'badge-success' : 'badge-danger'}">
+                            ${item.type}
+                        </span>
+                    </td>
+                    <td class="text-right money ${isIncome ? '' : 'money-negative'}">
+                        ${isIncome ? '+' : '-'}${this.formatMoney(item.amount)}
+                    </td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">No transactions found.</td></tr>';
+    },
+
+    renderTribes() {
+        const container = document.getElementById('tribes-container');
+        container.innerHTML = '';
+
+        DeptManager.getAll().forEach(dept => {
+            const pledges = store.data.pledges.filter(p => p.department === dept);
+            
+            const pledged = pledges.reduce((sum, p) => sum + p.amount, 0);
+            
+            let collected = 0;
+            pledges.forEach(p => {
+                collected += store.data.transactions
+                    .filter(t => t.pledgeId === p.id)
+                    .reduce((sum, t) => sum + t.amount, 0);
+            });
+
+            const percent = pledged > 0 ? Math.round((collected / pledged) * 100) : 0;
+            const progressClass = percent < 50 ? 'danger' : (percent < 100 ? 'warn' : 'success');
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="card-body">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                        <h3 style="margin:0;">${escapeHtml(dept)}</h3>
+                        <span class="badge badge-info">${pledges.length} Members</span>
+                    </div>
+                    
+                    <div class="progress-wrapper">
+                        <div class="progress-info">
+                            <small>Collected: <strong>${this.formatMoney(collected)}</strong> / ${this.formatMoney(pledged)}</small>
+                            <small>${percent}%</small>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill ${progressClass}" style="width: ${percent}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; font-size:0.85rem;">
+                        <span class="text-muted">Balance</span>
+                        <span class="money ${ (pledged - collected) > 0 ? 'money-negative' : '' }">
+                            ${this.formatMoney(pledged - collected)}
+                        </span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    },
+
+    renderSettingsList() {
+        const list = document.getElementById('settings-phase-list');
+        list.innerHTML = '';
+        
+        store.data.phases.forEach(p => {
+            const el = document.createElement('div');
+            el.className = 'phase-item';
+            el.innerHTML = `
+                <div>
+                    <div style="font-weight:600;">${escapeHtml(p.name)}</div>
+                    <small class="text-muted">Target: ${this.formatMoney(p.totalTarget)} • Due: ${this.formatDate(p.date)}</small>
+                </div>
+                <button class="btn btn-sm btn-danger" onclick="store.deletePhase(${p.id})">Delete</button>
+            `;
+            list.appendChild(el);
+        });
+    },
+
+    // --- UTILITIES ---
+    formatMoney(amount) {
+        return 'KES ' + amount.toLocaleString('en-KE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    },
+
+    formatDate(isoString) {
+        if(!isoString) return '';
+        const d = new Date(isoString);
+        return d.toLocaleDateString('en-GB'); // DD/MM/YYYY
+    },
+
+    formatDateTime(isoString) {
+        if(!isoString) return '';
+        const d = new Date(isoString);
+        return d.toLocaleString('en-GB'); // DD/MM/YYYY, HH:MM
+    },
+
+    showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<span>${message}</span>`;
+        
+        container.appendChild(toast);
+        
+        // Trigger animation
+        setTimeout(() => toast.classList.add('show'), 10);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+};
+
+// Start the app when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    app.init();
+});
