@@ -88,7 +88,15 @@ const store = {
             }
         } catch (e) {
             console.error("Data corruption detected. Resetting.", e);
-            this.hardResetInternal();
+            // Ensure data structure exists even if error
+            this.data = { pledges: [], transactions: [], expenses: [], phases: [] };
+            this.data.phases.push({
+                id: Date.now(),
+                name: "Initial Phase",
+                totalTarget: 1000000,
+                date: new Date().toISOString().split('T')[0],
+                deptTargets: {} 
+            });
         }
     },
 
@@ -103,14 +111,24 @@ const store = {
 
     addPledge(n, d, a) {
         const existing = this.data.pledges.find(p => 
-            p.name.toLowerCase()===n.toLowerCase() && 
-            p.department.toLowerCase()===d.toLowerCase()
+            p.name.toLowerCase() === n.toLowerCase() &&
+            p.department.toLowerCase() === d.toLowerCase()
         );
-        if(existing) { existing.amount += a; this.save(); return existing.id; }
-        else {
+        
+        if (existing) {
+            existing.amount += a;
+            this.save();
+            return existing.id;
+        } else {
             const id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
-            this.data.pledges.push({ id, name:n, department:d, amount:a, date:new Date().toISOString() }); 
-            this.save(); 
+            this.data.pledges.push({
+                id,
+                name,
+                department: d,
+                amount: a,
+                date: new Date().toISOString()
+            });
+            this.save();
             return id;
         }
     },
@@ -129,7 +147,15 @@ const store = {
     },
 
     deletePledge(id) {
-        this.data.pledges = this.data.pledges.filter(p=>p.id!==id); 
+        const pledge = this.data.pledges.find(p => p.id === id);
+        if (pledge) {
+            const txCount = this.data.transactions.filter(t => t.pledgeId === id).length;
+            if (txCount > 0) {
+                const proceed = confirm(`This pledge has ${txCount} payments. Deleting it will remove them from ledger. Continue?`);
+                if (!proceed) return;
+            }
+        }
+        this.data.pledges = this.data.pledges.filter(p => p.id !== id);
         this.save();
     },
 
@@ -167,7 +193,7 @@ const store = {
     },
 
     deletePhase(id) {
-        this.data.phases = this.data.phases.filter(p=>p.id!==id); 
+        this.data.phases = this.data.phases.filter(p => p.id !== id); 
         this.save(); 
     },
 
@@ -182,22 +208,23 @@ window.app = {
     stagedTx: [],
 
     init() {
-        DeptManager.init();
-        store.init();
-        this.populateDeptSelects();
-        this.renderSettingsForm();
-        this.render();
-        this.setupShortcuts();
+        try {
+            DeptManager.init();
+            store.init();
+            this.populateDeptSelects();
+            this.renderSettingsForm();
+            this.render();
+            this.setupShortcuts();
+        } catch(e) {
+            console.error("Critical Initialization Error:", e);
+            alert("App failed to start. Please clear browser cache.");
+        }
     },
 
     setupShortcuts() {
-        // Keyboard Shortcuts for Power Users
         document.addEventListener('keydown', (e) => {
-            // Ignore if user is typing in an input
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
             const key = e.key.toUpperCase();
-            
             if (key === 'C') {
                 e.preventDefault();
                 this.openModal('manual-cash');
@@ -212,10 +239,10 @@ window.app = {
     },
 
     router(id) {
-        document.querySelectorAll('main > section').forEach(e => e.classList.add('hidden'));
+        document.querySelectorAll('main > section').forEach(el => el.classList.add('hidden'));
         document.getElementById(`view-${id}`).classList.remove('hidden');
         
-        document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
         const map = {'dashboard':0, 'pledges':1, 'ledger':2, 'expenses':3, 'tribes':4, 'settings':5 };
         const nav = document.querySelectorAll('.nav-item');
         if(nav[map[id]]) nav[map[id]].classList.add('active');
@@ -223,12 +250,19 @@ window.app = {
     
     openModal(t) { 
         const el = document.getElementById(`modal-${t}`);
-        if(el) el.classList.add('open');
+        if(el) {
+            el.classList.add('open');
+            // Animation for smoother feel
+            setTimeout(() => el.style.opacity = 1, 10);
+        }
     },
     
     closeModal(t) { 
         const el = document.getElementById(`modal-${t}`);
-        if(el) el.classList.remove('open');
+        if(el) {
+            el.style.opacity = 0;
+            setTimeout(() => el.classList.remove('open'), 300);
+        }
         if(t === 'sms-parse') {
             document.getElementById('sms-input').value = '';
             document.getElementById('staged-area').classList.add('hidden');
@@ -241,8 +275,11 @@ window.app = {
     
     populateDeptSelects() {
         const depts = DeptManager.getAll();
-        const opts = depts.map(d=>`<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
-        ['modal-dept-select','edit-dept-select','cash-dept'].forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = opts; });
+        const opts = depts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+        ['modal-dept-select','edit-dept-select','cash-dept'].forEach(id => { 
+            const el = document.getElementById(id); 
+            if(el) el.innerHTML = opts; 
+        });
         const names = [...new Set(store.data.pledges.map(p => p.name))];
         const memberList = document.getElementById('member-list');
         if(memberList) memberList.innerHTML = names.map(n => `<option value="${escapeHtml(n)}">`).join('');
@@ -305,7 +342,7 @@ window.app = {
         store.addExpense(desc, amount, category);
         this.closeModal('expense'); 
         e.target.reset();
-        this.showToast('Expense recorded', 'error'); // Visual alert using error style
+        this.showToast('Expense recorded', 'error'); 
     },
 
     submitManualCash(e) {
@@ -315,7 +352,6 @@ window.app = {
         const amount = parseSafeFloat(document.getElementById('cash-amount').value);
         const ref = document.getElementById('cash-ref').value || 'Manual Cash';
         const timestamp = new Date(); 
-
         if(amount <= 0) { this.showToast("Amount must be greater than 0", "error"); return; }
 
         const isDupe = store.data.transactions.some(t => 
@@ -334,12 +370,10 @@ window.app = {
             const pid = store.addPledge(name, dept, amount);
             pledge = store.data.pledges.find(p => p.id === pid);
         }
-        
         store.addTransaction({
             pledgeId: pledge.id, name: pledge.name, department: dept, amount: amount, 
             type: 'credit', method: 'Cash', ref: ref, date: timestamp.toISOString() 
         });
-
         this.closeModal('manual-cash'); 
         this.showToast('Payment recorded!', 'success');
         e.target.reset();
@@ -347,6 +381,7 @@ window.app = {
 
     editPledge(id) {
         const p = store.data.pledges.find(x => x.id === id);
+        if(!p) return;
         document.getElementById('edit-id').value = p.id;
         document.querySelector('#modal-edit-pledge [name="name"]').value = p.name;
         document.querySelector('#modal-edit-pledge [name="department"]').value = p.department;
@@ -367,11 +402,11 @@ window.app = {
     },
 
     deletePledge(id) { 
-        if(confirm('Delete this pledge?')) { store.deletePledge(id); } 
+        if(confirm("Are you sure you want to delete this pledge?")) { store.deletePledge(id); } 
     },
     
     deleteExpense(id) { 
-        if(confirm('Delete this expense?')) { 
+        if(confirm("Are you sure you want to delete this expense?")) { 
             store.data.expenses = store.data.expenses.filter(e=>e.id!==id); 
             store.save();
             this.showToast('Expense deleted', 'success');
@@ -459,7 +494,7 @@ window.app = {
                             count++;
                         }
                     });
-                    this.populateDeptSelects();
+                    this.populateDeptSelects(); 
                     let msg = `Imported/Updated ${count} pledges.`;
                     if(newDeptCount > 0) msg += ` Created ${newDeptCount} new departments.`;
                     this.showToast(msg, 'success');
@@ -488,7 +523,7 @@ window.app = {
         } else if (type === 'expenses') {
             csvContent += "Date,Category,Description,Amount\r\n";
             store.data.expenses.forEach(e => {
-                const dateStr = this.formatDate(e.date);
+                const dateStr = app.formatDate(e.date);
                 csvContent += `"${dateStr}","${e.category}","${e.description}",${e.amount}\r\n`;
             });
             filename = "DCD_Expenses.csv";
@@ -499,7 +534,7 @@ window.app = {
                 ...store.data.expenses.map(e=>({...e, type:'EXPENSE', name:e.description, meta:e.category}))
             ].sort((a,b)=>new Date(b.date)-new Date(a.date));
             ledger.forEach(row => {
-                csvContent += `"${this.formatDate(row.date)}","${row.type}","${row.name}","${row.meta}",${row.amount}\r\n`;
+                csvContent += `"${app.formatDate(row.date)}","${row.type}","${row.name}","${row.meta}",${row.amount}\r\n`;
             });
             filename = "DCD_Ledger.csv";
         }
@@ -512,39 +547,29 @@ window.app = {
         link.remove();
     },
 
-    // --- NEW SNAPSHOT FEATURE ---
     generateSnapshot() {
         const today = new Date().toISOString().split('T')[0];
-        
-        // Filter today's transactions
         const todayTxs = store.data.transactions.filter(t => t.date.startsWith(today));
         const todayExp = store.data.expenses.filter(e => e.date.startsWith(today));
-        
         const totalCash = todayTxs.reduce((sum,t)=>sum+t.amount,0);
         const totalExp = todayExp.reduce((sum,e)=>sum+e.amount,0);
-        
         document.getElementById('snapshot-date').innerText = new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         document.getElementById('snap-cash').innerText = this.formatMoney(totalCash);
         document.getElementById('snap-expenses').innerText = this.formatMoney(totalExp);
-        
         const detailsDiv = document.getElementById('snapshot-details');
         if(todayTxs.length === 0 && todayExp.length === 0) {
             detailsDiv.innerHTML = '<p class="text-muted" style="text-align:center;">No activity recorded today yet.</p>';
         } else {
             let html = '<table style="width:100%; margin-top:10px;"><thead><tr><th>Who</th><th>Type</th><th class="text-right">Amount</th></tr></thead><tbody>';
-            
             todayTxs.forEach(t => {
                 html += `<tr><td>${escapeHtml(t.name)}</td><td>${t.method}</td><td class="text-right text-success">+${this.formatMoney(t.amount)}</td></tr>`;
             });
-            
             todayExp.forEach(e => {
                 html += `<tr><td>${escapeHtml(e.description)}</td><td>${e.category}</td><td class="text-right text-danger">-${this.formatMoney(e.amount)}</td></tr>`;
             });
-            
             html += '</tbody></table>';
             detailsDiv.innerHTML = html;
         }
-        
         this.openModal('snapshot');
     },
 
@@ -609,7 +634,7 @@ window.app = {
                 return;
             }
             this.stagedTx = results;
-            this.renderStaged();
+            app.renderStaged();
             document.getElementById('staged-area').classList.remove('hidden');
             document.getElementById('btn-parse-trigger').classList.add('hidden');
             document.getElementById('btn-commit-trigger').classList.remove('hidden');
@@ -692,23 +717,14 @@ window.app = {
                 this.showToast(`Duplicate Skipped: ${tx.name} (${tx.assignedDept})`, 'error');
                 return;
             }
-            let pledge = store.data.pledges.find(p => 
-                p.name.toLowerCase() === tx.name.toLowerCase() && 
-                p.department.toLowerCase() === tx.assignedDept.toLowerCase()
-            );
+            let pledge = store.data.pledges.find(p => p.name.toLowerCase() === tx.name.toLowerCase() && p.department.toLowerCase() === tx.assignedDept.toLowerCase());
             if(!pledge) {
                 const pid = store.addPledge(tx.name, tx.assignedDept, tx.amount);
                 pledge = store.data.pledges.find(p => p.id === pid);
             }
             store.addTransaction({
-                pledgeId: pledge.id,
-                name: pledge.name,
-                department: tx.assignedDept,
-                amount: tx.amount,
-                type: 'credit',
-                method: tx.method,
-                ref: tx.ref,
-                date: tx.date.toISOString() 
+                pledgeId: pledge.id, name: pledge.name, department: tx.assignedDept, amount: tx.amount,
+                type: 'credit', method: tx.method, ref: tx.ref, date: tx.date.toISOString() 
             });
             count++;
         });
@@ -728,6 +744,7 @@ window.app = {
             this.renderExpenses();
             this.renderLedger();
             this.renderTribes();
+            this.renderSettingsList();
             this.populateDeptSelects();
         } catch(e) {
             console.error("Render Error:", e);
@@ -735,169 +752,204 @@ window.app = {
     },
 
     renderDashboard() {
-        const cash = store.data.transactions.reduce((s,t)=>s+t.amount,0);
-        const exp = store.data.expenses.reduce((s,e)=>s+e.amount,0);
-        const net = cash - exp;
-        const pledged = store.data.pledges.reduce((s,p)=>s+p.amount,0);
-        const eff = pledged ? Math.round((net/pledged)*100) : 0;
+        const totalCash = store.data.transactions.reduce((sum,t)=>sum+t.amount,0);
+        const totalExpenses = store.data.expenses.reduce((sum,e)=>sum+e.amount,0);
+        const netCash = totalCash - totalExpenses;
+        const totalPledges = store.data.pledges.reduce((sum,p)=>sum+p.amount,0);
+        const eff = totalPledges ? Math.round((netCash/totalPledges)*100) : 0;
 
-        document.getElementById('dash-cash').innerText = this.formatMoney(cash);
-        document.getElementById('dash-expenses').innerText = this.formatMoney(exp);
-        document.getElementById('dash-net').innerText = this.formatMoney(net);
-        document.getElementById('dash-pledges').innerText = this.formatMoney(pledged);
+        document.getElementById('dash-cash').innerText = this.formatMoney(totalCash);
+        document.getElementById('dash-expenses').innerText = this.formatMoney(totalExpenses);
+        document.getElementById('dash-net').innerText = this.formatMoney(netCash);
+        document.getElementById('dash-pledges').innerText = this.formatMoney(totalPledges);
         document.getElementById('dash-rate').innerText = eff + '%';
 
-        // MILESTONE PULSE: If efficiency > 50%, pulse the card
+        // MILESTONE PULSE
         const effCard = document.getElementById('card-efficiency');
-        if(eff >= 50) {
-            effCard.classList.add('kpi-milestone');
-        } else {
-            effCard.classList.remove('kpi-milestone');
+        if(effCard) {
+            if(eff >= 50) effCard.classList.add('kpi-milestone');
+            else effCard.classList.remove('kpi-milestone');
         }
 
-        // PROJECTION BAR (POSSIBILITY)
+        // PROJECTION BAR
         const projBar = document.getElementById('proj-bar');
         if(projBar) {
-            const potential = pledged || 1;
-            const pct = Math.min(100, Math.round((net / potential) * 100));
-            projBar.style.width = `${pct}%`;
+            const potential = totalPledges || 1;
+            const pct = Math.min(100, Math.round((netCash / potential) * 100));
+            if(projBar) projBar.style.width = `${pct}%`;
         }
 
-        // Phases
         const phaseContainer = document.getElementById('phase-list');
         phaseContainer.innerHTML = '';
-        store.data.phases.forEach(p => {
-            const pct = Math.min(100, Math.round((cash/p.totalTarget)*100));
+        store.data.phases.forEach(phase => {
+            const pct = Math.min(100, Math.round((totalCash / phase.totalTarget)*100));
             phaseContainer.innerHTML += `
                 <div style="margin-bottom: 20px;">
                     <div class="progress-info" style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                        <span>${escapeHtml(p.name)} <small style="font-weight:400; color:var(--text-muted);">(${this.formatDate(p.date)})</small></span>
-                        <span style="font-size:0.9rem;">${pct}%</span>
+                        <span>${escapeHtml(phase.name)} <small style="font-weight:400; color:var(--text-muted);">(${this.formatDate(phase.date)})</small></span>
+                        <span style="font-weight:600;">${pct}%</span>
                     </div>
                     <div style="width:100%; height:8px; background:#E5E7EB; border-radius:4px; overflow:hidden;">
-                        <div class="progress-fill" style="width:${pct}%; height:100%; background:var(--primary); border-radius:4px; transition: width 1s;"></div>
+                        <div class="progress-fill" style="width: ${pct}%; height:100%; background:var(--primary); border-radius:4px; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"></div>
                     </div>
                 </div>
             `;
         });
 
-        // Recent
         const recent = document.getElementById('recent-activity');
         const txs = store.data.transactions.slice(0,5);
         if(txs.length === 0) {
             recent.innerHTML = '<p class="empty-state" style="text-align: center; padding: 20px; color: var(--text-muted);">No recent activity.</p>';
         } else {
             recent.innerHTML = txs.map(t => `
-                <div class="activity-item" style="padding:12px; border-bottom:1px solid #F3F4F6; display:flex; justify-content:space-between; align-items:center;">
+                <div class="activity-item" style="padding: 12px; border-bottom: 1px solid #F3F4F6; display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <div style="font-weight:600;">${escapeHtml(t.name)}</div>
-                        <small style="color:var(--text-muted);">${t.method} • ${this.formatDateTime(t.date)}</small>
+                        <div style="font-weight: 600;">${escapeHtml(t.name)}</div>
+                        <small style="color:var(--text-muted); font-size: 0.8rem;">${t.method} • ${this.formatDateTime(t.date)}</small>
                     </div>
-                    <div style="font-weight:700; color:var(--primary);">+${this.formatMoney(t.amount)}</div>
+                    <div style="font-weight: 700; color:var(--primary);">+${this.formatMoney(t.amount)}</div>
                 </div>
             `).join('');
         }
         
-        // Charts
-        MiniCharts.renderDonut('chart-efficiency', eff, '#059669');
-        const deptData = DeptManager.getAll().map(dept => {
-            const pledged = store.data.pledges.filter(p=>p.department===dept).reduce((s,p)=>s+p.amount,0);
-            const collected = store.data.pledges.filter(p=>p.department===dept)
-                .reduce((sum, p) => sum + store.data.transactions.filter(t=>t.pledgeId===p.id).reduce((s,t)=>s+t.amount,0), 0);
-            return { label: dept, value: collected, target: pledged };
-        });
-        MiniCharts.renderBars('chart-departments', deptData);
+        // Chart Safety Check
+        const donutContainer = document.getElementById('chart-efficiency');
+        if(donutContainer) MiniCharts.renderDonut('chart-efficiency', eff, '#059669');
+        
+        const barContainer = document.getElementById('chart-departments');
+        if(barContainer) {
+            const deptData = DeptManager.getAll().map(dept => {
+                const pledged = store.data.pledges.filter(p=>p.department===dept).reduce((s,p)=>s+p.amount,0);
+                const collected = store.data.pledges.filter(p=>p.department===dept)
+                    .reduce((sum, p) => sum + store.data.transactions.filter(t=>t.pledgeId===p.id).reduce((s,t)=>s+t.amount,0), 0);
+                return { label: dept, value: collected, target: pledged };
+            });
+            MiniCharts.renderBars('chart-departments', deptData);
+        }
     },
 
     renderPledges() {
         const tbody = document.getElementById('pledges-table-body');
         const search = document.getElementById('pledge-search').value.toLowerCase();
         let html = '';
-        store.data.pledges.filter(p => p.name.toLowerCase().includes(search)).map(p => {
-            const paid = store.data.transactions.filter(t=>t.pledgeId===p.id).reduce((s,t)=>s+t.amount,0);
-            const bal = p.amount - paid;
-            const status = bal <= 0 ? 'Paid' : (paid > 0 ? 'Partial' : 'Outstanding');
-            const color = bal <= 0 ? 'badge-success' : (paid > 0 ? 'badge-warn' : 'badge-info');
-            return `
+        store.data.pledges.forEach(p => {
+            if(p.name.toLowerCase().includes(search)) {
+                const paid = store.data.transactions
+                    .filter(t => t.pledgeId === p.id)
+                    .reduce((sum, t) => sum + t.amount, 0);
+                const balance = p.amount - paid;
+                const status = balance <= 0 ? 'Paid' : (paid > 0 ? 'Partial' : 'Outstanding');
+                const color = balance <= 0 ? 'badge-success' : (paid > 0 ? 'badge-warn' : 'badge-info');
+                html += `
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600;">${escapeHtml(p.name)}</div>
+                            <small style="color:var(--text-muted); font-size: 0.75rem;">Joined: ${this.formatDate(p.date)}</small>
+                        </td>
+                        <td><span class="badge" style="background:#F3F4F6; color:#6B7280;">${escapeHtml(p.department)}</span></td>
+                        <td class="text-right money">${this.formatMoney(p.amount)}</td>
+                        <td class="text-right money" style="color:var(--primary);">${this.formatMoney(paid)}</td>
+                        <td class="text-right money ${balance > 0 ? 'money-negative' : ''}">${this.formatMoney(balance)}</td>
+                        <td class="text-right">${status}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-secondary" onclick="app.editPledge('${p.id}')">Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="app.deletePledge('${p.id}')">Del</button>
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+        tbody.innerHTML = html || '<tr><td colspan="7" class="text-center text-muted">No pledges found.</td></tr>';
+    },
+
+    renderExpenses() {
+        const tbody = document.getElementById('expenses-table-body');
+        let html = '';
+        const sorted = [...store.data.expenses].sort((a,b)=>new Date(b.date)-new Date(a.date));
+        sorted.forEach(e => {
+            html += `
                 <tr>
-                    <td><div style="font-weight:600;">${escapeHtml(p.name)}</div></td>
-                    <td><span class="badge" style="background:#F3F4F6; color:#6B7280;">${escapeHtml(p.department)}</span></td>
-                    <td class="text-right money">${this.formatMoney(p.amount)}</td>
-                    <td class="text-right money" style="color:var(--primary);">${this.formatMoney(paid)}</td>
-                    <td class="text-right money ${bal>0?'money-negative':''}">${this.formatMoney(bal)}</td>
-                    <td class="text-right"><span class="badge ${color}">${status}</span></td>
+                    <td>${this.formatDate(e.date)}</td>
+                    <td><span class="badge badge-warn">${escapeHtml(e.category)}</span></td>
+                    <td>${escapeHtml(e.description)}</td>
+                    <td class="text-right money money-negative">-${this.formatMoney(e.amount)}</td>
                     <td class="text-center">
-                        <button class="btn btn-sm btn-secondary" onclick="app.editPledge('${p.id}')">Edit</button>
-                        <button class="btn btn-sm btn-danger" onclick="app.deletePledge('${p.id}')">Del</button>
+                        <button class="btn btn-sm btn-secondary" onclick="app.deleteExpense('${e.id}')">x</button>
                     </td>
                 </tr>
             `;
-        }).join('') || '<tr><td colspan="7" class="text-center text-muted">No pledges found.</td></tr>';
-        tbody.innerHTML = html;
+        });
+        tbody.innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">No expenses recorded.</td></tr>';
     },
-    
-    renderExpenses() {
-        const tbody = document.getElementById('expenses-table-body');
-        tbody.innerHTML = [...store.data.expenses].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(e => `
-            <tr>
-                <td>${this.formatDate(e.date)}</td>
-                <td><span class="badge badge-warn">${escapeHtml(e.category)}</span></td>
-                <td>${escapeHtml(e.description)}</td>
-                <td class="text-right money money-negative">-${this.formatMoney(e.amount)}</td>
-                <td class="text-center"><button class="btn btn-sm btn-secondary" onclick="app.deleteExpense('${e.id}')">x</button></td>
-            </tr>
-        `).join('') || '<tr><td colspan="5" class="text-center text-muted">No expenses.</td></tr>';
-    },
-    
+
     renderLedger() {
         const tbody = document.getElementById('ledger-table-body');
         const ledger = [
-            ...store.data.transactions.map(t=>({...t, type:'INCOME', name:t.name, meta:t.method})),
-            ...store.data.expenses.map(e=>({...e, type:'EXPENSE', name:e.description, meta:e.category}))
+            ...store.data.transactions.map(t=>({...t, type:'INCOME', color:'text-success'})),
+            ...store.data.expenses.map(e=>({...e, type:'EXPENSE', color:'text-danger', name:e.description, method:e.category}))
         ].sort((a,b)=>new Date(b.date)-new Date(a.date));
         let html = '';
         ledger.forEach(item => {
-            const isIncome = item.type==='INCOME';
+            const isIncome = item.type === 'INCOME';
             html += `
                 <tr>
-                    <td>${this.formatDate(item.date)}</td>
-                    <td>${item.meta}</td>
+                    <td>${this.formatDateTime(item.date)}</td>
+                    <td>${escapeHtml(item.method)}</td>
                     <td>${escapeHtml(item.name)}</td>
-                    <td><span class="badge ${isIncome?'badge-success':'badge-danger'}">${item.type}</span></td>
-                    <td class="text-right money ${!isIncome?'money-negative':''}">${isIncome?'+':'-'}${this.formatMoney(item.amount)}</td>
+                    <td>
+                        <span class="badge ${isIncome ? 'badge-success' : 'badge-danger'}">
+                            ${item.type}
+                        </span>
+                    </td>
+                    <td class="text-right money ${!isIncome ? 'money-negative' : ''}">${isIncome ? '+' : '-'}${this.formatMoney(item.amount)}</td>
                 </tr>
             `;
         });
-        tbody.innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">No transactions.</td></tr>';
+        tbody.innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">No transactions found.</td></tr>';
     },
-    
+
     renderTribes() {
         const container = document.getElementById('tribes-container');
         container.innerHTML = '';
         DeptManager.getAll().map(dept => {
-            const pledged = store.data.pledges.filter(p=>p.department===dept).reduce((s,p)=>s+p.amount,0);
-            const collected = store.data.pledges.filter(p=>p.department===dept).reduce((sum, p) => sum + store.data.transactions.filter(t=>t.pledgeId===p.id).reduce((s,t)=>s+t.amount,0), 0);
-            const pct = pledged ? Math.round((collected/pledged)*100) : 0;
+            const pledges = store.data.pledges.filter(p => p.department === dept);
+            const pledged = pledges.reduce((sum, p) => sum + p.amount, 0);
+            let collected = 0;
+            pledges.forEach(p => {
+                collected += store.data.transactions
+                    .filter(t => t.pledgeId === p.id)
+                    .reduce((sum, t) => sum + t.amount, 0);
+            });
+            const percent = pledged > 0 ? Math.round((collected/pledged)*100) : 0;
+            const progressClass = percent < 50 ? 'danger' : (percent < 100 ? 'warn' : 'success');
             return `
                 <div class="card">
-                    <div style="padding:24px;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:16px;">
-                            <h3>${escapeHtml(dept)}</h3>
-                            <span class="badge badge-info">${store.data.pledges.filter(p=>p.department===dept).length} Members</span>
+                    <div style="padding: 24px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                            <h3 style="margin:0;">${escapeHtml(dept)}</h3>
+                            <span class="badge badge-info">${pledges.length} Members</span>
                         </div>
-                        <div style="width:100%; height:10px; background:#F3F4F6; border-radius:5px; overflow:hidden;">
-                            <div class="progress-fill" style="width:${pct}%; height:100%; background:var(--primary); border-radius:5px;"></div>
+                        <div style="margin-bottom: 20px;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:0.9rem;">
+                                <small>Collected: <strong>${this.formatMoney(collected)}</strong> / ${this.formatMoney(pledged)}</small>
+                                <small>${percent}%</small>
+                            </div>
+                            <div style="width:100%; height:8px; background:#E5E7EB; border-radius:4px; overflow:hidden;">
+                                <div class="progress-fill ${progressClass}" style="width: ${percent}%; height:100%; background:var(--primary); border-radius:4px;"></div>
+                            </div>
                         </div>
-                        <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:0.9rem;">
-                            <span class="text-muted">Collected</span>
-                            <span style="font-weight:700;">${this.formatMoney(collected)} / ${this.formatMoney(pledged)}</span>
+                        <div style="margin-top:16px; padding-top:16px; border-top:1px solid #E5E7EB; display:flex; justify-content:space-between; font-size:0.9rem;">
+                            <span class="text-muted">Balance</span>
+                            <span class="money ${ (pledged - collected) > 0 ? 'money-negative' : '' }">
+                                ${this.formatMoney(pledged - collected)}
+                            </span>
                         </div>
                     </div>
                 </div>
             `;
-        }).join('');
+        }).forEach(card => container.appendChild(card));
     },
-    
+
     renderSettingsList() {
         const list = document.getElementById('settings-phase-list');
         list.innerHTML = '';
@@ -906,7 +958,7 @@ window.app = {
             el.className = 'phase-item';
             el.innerHTML = `
                 <div>
-                    <div style="font-weight:600;">${escapeHtml(p.name)}</div>
+                    <div style="font-weight: 600;">${escapeHtml(p.name)}</div>
                     <small class="text-muted">Target: ${this.formatMoney(p.totalTarget)} • Due: ${this.formatDate(p.date)}</small>
                 </div>
                 <button class="btn btn-sm btn-danger" onclick="store.deletePhase(${p.id})">Delete</button>
@@ -922,13 +974,13 @@ window.app = {
     formatDate(isoString) {
         if(!isoString) return '';
         const d = new Date(isoString);
-        return d.toLocaleDateString('en-GB'); // DD/MM/YYYY
+        return d.toLocaleDateString('en-GB');
     },
 
     formatDateTime(isoString) {
         if(!isoString) return '';
         const d = new Date(isoString);
-        return d.toLocaleString('en-GB'); // DD/MM/YYYY, HH:MM
+        return d.toLocaleString('en-GB');
     },
 
     showToast(message, type = 'success') {
@@ -954,14 +1006,12 @@ const MiniCharts = {
         const svg = document.createElementNS(svgNS, "svg");
         svg.setAttribute("viewBox", "0 0 36 36");
         svg.setAttribute("class", "chart");
-
         const bgCircle = document.createElementNS(svgNS, "path");
         bgCircle.setAttribute("d", "M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831");
         bgCircle.setAttribute("fill", "none");
         bgCircle.setAttribute("stroke", "#E5E7EB");
         bgCircle.setAttribute("stroke-width", "3");
         svg.appendChild(bgCircle);
-
         const strokeDasharray = `${percentage}, 100`;
         const fgCircle = document.createElementNS(svgNS, "path");
         fgCircle.setAttribute("d", "M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831");
@@ -972,7 +1022,6 @@ const MiniCharts = {
         fgCircle.setAttribute("stroke-linecap", "round");
         fgCircle.setAttribute("class", "donut-segment");
         svg.appendChild(fgCircle);
-
         container.innerHTML = '';
         container.appendChild(svg);
     },
@@ -980,6 +1029,13 @@ const MiniCharts = {
     renderBars(containerId, data) {
         const container = document.getElementById(containerId);
         if(!container) return;
+        
+        // ROBUST FIX: Handle empty data to prevent crashes
+        if(!data || data.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:20px;">No data to display</div>';
+            return;
+        }
+
         const maxVal = Math.max(...data.map(d=>d.target)) || 1;
         const width = container.clientWidth || 400;
         const height = 250;
@@ -1017,7 +1073,7 @@ const MiniCharts = {
             text.setAttribute("text-anchor", "middle");
             text.setAttribute("fill", "#6B7280");
             text.setAttribute("font-size", "10");
-            text.textContent = d.label.substring(0, 4) + '..';
+            text.textContent = d.label.substring(0, 3) + '..';
 
             svg.appendChild(rect);
             svg.appendChild(text);
