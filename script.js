@@ -338,9 +338,10 @@ window.app = {
             return;
         }
 
-        const dupe = this.checkDuplicate(name, dept, amount, timestamp);
+        // FIXED LOGIC: Check strictly for duplicate person+time, not just amount
+        const dupe = this.checkDuplicate(name, dept, timestamp);
         if (dupe) {
-            this.showToast(`Duplicate: Same amount from ${name} (${dept}) within 30 minutes.`, 'error');
+            this.showToast(`Duplicate: Payment from ${name} (${dept}) already recorded recently.`, 'error');
             return;
         }
 
@@ -608,16 +609,17 @@ window.app = {
         link.remove();
     },
 
-    checkDuplicate(name, dept, amount, dateObj) {
-        const THIRTY_MINS = 30 * 60 * 1000;
+    checkDuplicate(name, dept, dateObj) {
+        const TWO_MINS = 2 * 60 * 1000; // Shortened window to 2 minutes for manual cash to be safe
         const checkTime = dateObj.getTime();
         return store.data.transactions.some(t => {
             const isSamePerson = t.name.toLowerCase() === name.toLowerCase() && 
                                  t.department.toLowerCase() === dept.toLowerCase();
-            const isSameAmount = Math.abs(t.amount - amount) < 0.01;
             const txTime = new Date(t.date).getTime();
-            const isRecent = Math.abs(txTime - checkTime) < THIRTY_MINS;
-            return isSamePerson && isSameAmount && isRecent;
+            const isRecent = Math.abs(txTime - checkTime) < TWO_MINS;
+            // Only block if the SAME PERSON paid recently. 
+            // REMOVED check for exact amount, as that was blocking valid payments.
+            return isSamePerson && isRecent;
         });
     },
 
@@ -759,7 +761,7 @@ window.app = {
             
             DeptManager.ensureExists(tx.assignedDept);
 
-            const dupe = this.checkDuplicate(tx.name, tx.assignedDept, tx.amount, tx.date);
+            const dupe = this.checkDuplicate(tx.name, tx.assignedDept, tx.date);
             if (dupe) {
                 this.showToast(`Duplicate Skipped: ${tx.name} (${tx.assignedDept})`, 'error');
                 return;
