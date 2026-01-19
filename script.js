@@ -1,7 +1,7 @@
 // --- CONSTANTS ---
 const DEFAULT_DEPARTMENTS = ["Eagles", "Daughters of Faith", "Youth", "Kingdom Generation", "Planning Committee", "Guests"];
 const DEPT_STORAGE_KEY = 'dcd_custom_departments';
-const DB_KEY = 'dcd_possess_land_v22';
+const DB_KEY = 'dcd_possess_land_v23';
 
 // --- SECURITY UTILS ---
 function escapeHtml(unsafe) {
@@ -75,6 +75,11 @@ const store = {
             const saved = localStorage.getItem(DB_KEY);
             if (saved) {
                 this.data = JSON.parse(saved);
+            // ENSURE ARRAYS EXIST
+                if (!Array.isArray(this.data.pledges)) this.data.pledges = [];
+                if (!Array.isArray(this.data.transactions)) this.data.transactions = [];
+                if (!Array.isArray(this.data.expenses)) this.data.expenses = [];
+                if (!Array.isArray(this.data.phases)) this.data.phases = [];
             } else {
                 // Initialize default phase if no data exists
                 this.data.phases.push({
@@ -90,13 +95,8 @@ const store = {
             console.error("Data corruption detected. Resetting.", e);
             // Ensure data structure exists even if error
             this.data = { pledges: [], transactions: [], expenses: [], phases: [] };
-            this.data.phases.push({
-                id: Date.now(),
-                name: "Initial Phase",
-                totalTarget: 1000000,
-                date: new Date().toISOString().split('T')[0],
-                deptTargets: {} 
-            });
+            this.data.phases.push({ id: Date.now(), name: "Initial Phase", totalTarget: 1000000, date: new Date().toISOString().split('T')[0], deptTargets: {} });
+            this.save();
         }
     },
 
@@ -111,10 +111,9 @@ const store = {
 
     addPledge(n, d, a) {
         const existing = this.data.pledges.find(p => 
-            p.name.toLowerCase() === n.toLowerCase() &&
-            p.department.toLowerCase() === d.toLowerCase()
+            p.name.toLowerCase()===n.toLowerCase() && 
+            p.department.toLowerCase()===d.toLowerCase()
         );
-        
         if (existing) {
             existing.amount += a;
             this.save();
@@ -217,7 +216,8 @@ window.app = {
             this.setupShortcuts();
         } catch(e) {
             console.error("Critical Initialization Error:", e);
-            alert("App failed to start. Please clear browser cache.");
+            // Try to save minimal state even if app crashes
+            alert("Application encountered an error starting up. Please refresh.");
         }
     },
 
@@ -225,6 +225,7 @@ window.app = {
         document.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
             const key = e.key.toUpperCase();
+            
             if (key === 'C') {
                 e.preventDefault();
                 this.openModal('manual-cash');
@@ -276,10 +277,7 @@ window.app = {
     populateDeptSelects() {
         const depts = DeptManager.getAll();
         const opts = depts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
-        ['modal-dept-select','edit-dept-select','cash-dept'].forEach(id => { 
-            const el = document.getElementById(id); 
-            if(el) el.innerHTML = opts; 
-        });
+        ['modal-dept-select','edit-dept-select','cash-dept'].forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = opts; });
         const names = [...new Set(store.data.pledges.map(p => p.name))];
         const memberList = document.getElementById('member-list');
         if(memberList) memberList.innerHTML = names.map(n => `<option value="${escapeHtml(n)}">`).join('');
@@ -342,7 +340,7 @@ window.app = {
         store.addExpense(desc, amount, category);
         this.closeModal('expense'); 
         e.target.reset();
-        this.showToast('Expense recorded', 'error'); 
+        this.showToast('Expense recorded', 'error'); // Visual alert using error style
     },
 
     submitManualCash(e) {
@@ -357,7 +355,7 @@ window.app = {
         const isDupe = store.data.transactions.some(t => 
             t.name.toLowerCase()===name.toLowerCase() && 
             t.department.toLowerCase()===dept.toLowerCase() && 
-            (new Date() - new Date(t.date)) < 120000
+            (new Date() - new Date(t.date)) < 120000 
         );
         if(isDupe) return alert('Duplicate payment detected.');
 
@@ -547,20 +545,22 @@ window.app = {
         link.remove();
     },
 
+    // --- NEW SNAPSHOT FEATURE ---
     generateSnapshot() {
         const today = new Date().toISOString().split('T')[0];
+        
         const todayTxs = store.data.transactions.filter(t => t.date.startsWith(today));
         const todayExp = store.data.expenses.filter(e => e.date.startsWith(today));
         const totalCash = todayTxs.reduce((sum,t)=>sum+t.amount,0);
-        const totalExp = todayExp.reduce((sum,e)=>sum+e.amount,0);
+        const totalExp = todayExp.reduce((s,e)=>s+e.amount,0);
         document.getElementById('snapshot-date').innerText = new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         document.getElementById('snap-cash').innerText = this.formatMoney(totalCash);
         document.getElementById('snap-expenses').innerText = this.formatMoney(totalExp);
         const detailsDiv = document.getElementById('snapshot-details');
         if(todayTxs.length === 0 && todayExp.length === 0) {
-            detailsDiv.innerHTML = '<p class="text-muted" style="text-align:center;">No activity recorded today yet.</p>';
+            detailsDiv.innerHTML = '<p class="text-muted" style="text-align: center; padding: 20px;">No activity recorded today yet.</p>';
         } else {
-            let html = '<table style="width:100%; margin-top:10px;"><thead><tr><th>Who</th><th>Type</th><th class="text-right">Amount</th></tr></thead><tbody>';
+            let html = '<table style="width: 100%; margin-top:10px;"><thead><tr><th>Who</th><th>Type</th><th class="text-right">Amount</th></tr></thead><tbody>';
             todayTxs.forEach(t => {
                 html += `<tr><td>${escapeHtml(t.name)}</td><td>${t.method}</td><td class="text-right text-success">+${this.formatMoney(t.amount)}</td></tr>`;
             });
@@ -594,7 +594,7 @@ window.app = {
                 if (isPersonal) {
                     const onIndex = line.indexOf(' on ');
                     if (onIndex === -1) {
-                        const dateFallback = line.match(/\d{1,2}\/\d{1,2}\/\d{2,4}\s+at\s+\d{1,2}:\d{2}\s*(AM|PM)/i);
+                        const dateFallback = line.match(/\d{1,2}\/\d{1,2}\/\d{2,4}\s+at\s+\d{1,2}:\d{2,4}\s*(AM|PM)/i);
                         if(dateFallback) {
                             const dateObj = this.parseSmartMpesaDate(dateFallback[0]);
                             if(dateObj) {
@@ -648,7 +648,7 @@ window.app = {
 
     parseSmartMpesaDate(str) {
         if(!str) return null;
-        const parts = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+at\s+(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+        const parts = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+at\s+(\d{1,2}):(\d{1,2}:\s*(AM|PM)/i);
         if(!parts) return null;
         const day = parseInt(parts[1]);
         let month = parseInt(parts[2]) - 1; 
@@ -717,14 +717,23 @@ window.app = {
                 this.showToast(`Duplicate Skipped: ${tx.name} (${tx.assignedDept})`, 'error');
                 return;
             }
-            let pledge = store.data.pledges.find(p => p.name.toLowerCase() === tx.name.toLowerCase() && p.department.toLowerCase() === tx.assignedDept.toLowerCase());
+            let pledge = store.data.pledges.find(p => 
+                p.name.toLowerCase() === tx.name.toLowerCase() && 
+                p.department.toLowerCase() === tx.assignedDept.toLowerCase()
+            );
             if(!pledge) {
                 const pid = store.addPledge(tx.name, tx.assignedDept, tx.amount);
                 pledge = store.data.pledges.find(p => p.id === pid);
             }
             store.addTransaction({
-                pledgeId: pledge.id, name: pledge.name, department: tx.assignedDept, amount: tx.amount,
-                type: 'credit', method: tx.method, ref: tx.ref, date: tx.date.toISOString() 
+                pledgeId: pledge.id,
+                name: pledge.name,
+                department: tx.assignedDept,
+                amount: tx.amount,
+                type: 'credit',
+                method: tx.method,
+                ref: tx.ref,
+                date: tx.date.toISOString() 
             });
             count++;
         });
@@ -744,7 +753,6 @@ window.app = {
             this.renderExpenses();
             this.renderLedger();
             this.renderTribes();
-            this.renderSettingsList();
             this.populateDeptSelects();
         } catch(e) {
             console.error("Render Error:", e);
@@ -752,13 +760,13 @@ window.app = {
     },
 
     renderDashboard() {
-        const totalCash = store.data.transactions.reduce((sum,t)=>sum+t.amount,0);
-        const totalExpenses = store.data.expenses.reduce((sum,e)=>sum+e.amount,0);
-        const netCash = totalCash - totalExpenses;
+        const cash = store.data.transactions.reduce((sum,t)=>sum+t.amount,0);
+        const totalExpenses = store.data.expenses.reduce((s,e)=>s+e.amount,0);
+        const netCash = cash - totalExpenses;
         const totalPledges = store.data.pledges.reduce((sum,p)=>sum+p.amount,0);
         const eff = totalPledges ? Math.round((netCash/totalPledges)*100) : 0;
 
-        document.getElementById('dash-cash').innerText = this.formatMoney(totalCash);
+        document.getElementById('dash-cash').innerText = this.formatMoney(cash);
         document.getElementById('dash-expenses').innerText = this.formatMoney(totalExpenses);
         document.getElementById('dash-net').innerText = this.formatMoney(netCash);
         document.getElementById('dash-pledges').innerText = this.formatMoney(totalPledges);
@@ -771,7 +779,7 @@ window.app = {
             else effCard.classList.remove('kpi-milestone');
         }
 
-        // PROJECTION BAR
+        // PROJECTION BAR (POSSIBILITY)
         const projBar = document.getElementById('proj-bar');
         if(projBar) {
             const potential = totalPledges || 1;
@@ -779,18 +787,19 @@ window.app = {
             if(projBar) projBar.style.width = `${pct}%`;
         }
 
+        // Phases
         const phaseContainer = document.getElementById('phase-list');
         phaseContainer.innerHTML = '';
-        store.data.phases.forEach(phase => {
-            const pct = Math.min(100, Math.round((totalCash / phase.totalTarget)*100));
+        store.data.phases.forEach(p => {
+            const pct = Math.min(100, Math.round((cash/p.totalTarget)*100));
             phaseContainer.innerHTML += `
                 <div style="margin-bottom: 20px;">
                     <div class="progress-info" style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                        <span>${escapeHtml(phase.name)} <small style="font-weight:400; color:var(--text-muted);">(${this.formatDate(phase.date)})</small></span>
-                        <span style="font-weight:600;">${pct}%</span>
+                        <span>${escapeHtml(p.name)} <small style="font-weight:400; color:var(--text-muted);">(${this.formatDate(p.date)})</small></span>
+                        <span style="font-size:0.9rem;">${pct}%</span>
                     </div>
                     <div style="width:100%; height:8px; background:#E5E7EB; border-radius:4px; overflow:hidden;">
-                        <div class="progress-fill" style="width: ${pct}%; height:100%; background:var(--primary); border-radius:4px; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                        <div class="progress-fill" style="width: ${pct}%; height:100%; background:var(--primary); border-radius:4px; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
                     </div>
                 </div>
             `;
@@ -802,14 +811,14 @@ window.app = {
             recent.innerHTML = '<p class="empty-state" style="text-align: center; padding: 20px; color: var(--text-muted);">No recent activity.</p>';
         } else {
             recent.innerHTML = txs.map(t => `
-                <div class="activity-item" style="padding: 12px; border-bottom: 1px solid #F3F4F6; display: flex; justify-content: space-between; align-items: center;">
+                <div class="activity-item" style="padding:12px; border-bottom: 1px solid #F3F4F6; display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <div style="font-weight: 600;">${escapeHtml(t.name)}</div>
-                        <small style="color:var(--text-muted); font-size: 0.8rem;">${t.method} • ${this.formatDateTime(t.date)}</small>
+                        <div style="font-weight:600;">${escapeHtml(t.name)}</div>
+                        <small style="color:var(--text-muted);">${t.method} • ${this.formatDateTime(t.date)}</small>
                     </div>
                     <div style="font-weight: 700; color:var(--primary);">+${this.formatMoney(t.amount)}</div>
                 </div>
-            `).join('');
+            `).join('') || '<p class="empty-state" style="text-align: center; padding: 20px; color: var(--text-muted);">No recent activity.</p>';
         }
         
         // Chart Safety Check
@@ -834,22 +843,18 @@ window.app = {
         let html = '';
         store.data.pledges.forEach(p => {
             if(p.name.toLowerCase().includes(search)) {
-                const paid = store.data.transactions
-                    .filter(t => t.pledgeId === p.id)
-                    .reduce((sum, t) => sum + t.amount, 0);
-                const balance = p.amount - paid;
-                const status = balance <= 0 ? 'Paid' : (paid > 0 ? 'Partial' : 'Outstanding');
-                const color = balance <= 0 ? 'badge-success' : (paid > 0 ? 'badge-warn' : 'badge-info');
+                const paid = store.data.transactions.filter(t=>t.pledgeId===p.id).reduce((s,t)=>s+t.amount,0);
+                const bal = p.amount - paid;
+                const status = bal <= 0 ? 'Paid' : (paid > 0 ? 'Partial' : 'Outstanding';
+                const color = bal <= 0 ? 'badge-success' : (paid > 0 ? 'badge-warn' : 'badge-info');
+                
                 html += `
                     <tr>
-                        <td>
-                            <div style="font-weight: 600;">${escapeHtml(p.name)}</div>
-                            <small style="color:var(--text-muted); font-size: 0.75rem;">Joined: ${this.formatDate(p.date)}</small>
-                        </td>
+                        <td><div style="font-weight:600;">${escapeHtml(p.name)}</div></td>
                         <td><span class="badge" style="background:#F3F4F6; color:#6B7280;">${escapeHtml(p.department)}</span></td>
                         <td class="text-right money">${this.formatMoney(p.amount)}</td>
                         <td class="text-right money" style="color:var(--primary);">${this.formatMoney(paid)}</td>
-                        <td class="text-right money ${balance > 0 ? 'money-negative' : ''}">${this.formatMoney(balance)}</td>
+                        <td class="text-right money ${bal > 0?'money-negative':''}">${this.formatMoney(bal)}</td>
                         <td class="text-right">${status}</td>
                         <td class="text-center">
                             <button class="btn btn-sm btn-secondary" onclick="app.editPledge('${p.id}')">Edit</button>
@@ -857,8 +862,9 @@ window.app = {
                         </td>
                     </tr>
                 `;
-            }
+            });
         });
+        tbody.innerHTML = html || '<tr><td colspan="7" class="text-center text-muted">No pledges found.</td></tr>';
         tbody.innerHTML = html || '<tr><td colspan="7" class="text-center text-muted">No pledges found.</td></tr>';
     },
 
@@ -873,9 +879,7 @@ window.app = {
                     <td><span class="badge badge-warn">${escapeHtml(e.category)}</span></td>
                     <td>${escapeHtml(e.description)}</td>
                     <td class="text-right money money-negative">-${this.formatMoney(e.amount)}</td>
-                    <td class="text-center">
-                        <button class="btn btn-sm btn-secondary" onclick="app.deleteExpense('${e.id}')">x</button>
-                    </td>
+                    <td class="text-center"><button class="btn btn-sm btn-secondary" onclick="app.deleteExpense('${e.id}')">x</button></td>
                 </tr>
             `;
         });
@@ -885,27 +889,25 @@ window.app = {
     renderLedger() {
         const tbody = document.getElementById('ledger-table-body');
         const ledger = [
-            ...store.data.transactions.map(t=>({...t, type:'INCOME', color:'text-success'})),
-            ...store.data.expenses.map(e=>({...e, type:'EXPENSE', color:'text-danger', name:e.description, method:e.category}))
+            ...store.data.transactions.map(t=>({...t, type:'INCOME', name:t.name, meta:t.method})),
+            ...store.data.expenses.map(e=>({...e, type:'EXPENSE', name:e.description, meta:e.category}))
         ].sort((a,b)=>new Date(b.date)-new Date(a.date));
         let html = '';
         ledger.forEach(item => {
-            const isIncome = item.type === 'INCOME';
+            const isIncome = item.type==='INCOME';
             html += `
                 <tr>
                     <td>${this.formatDateTime(item.date)}</td>
-                    <td>${escapeHtml(item.method)}</td>
+                    <td>${item.meta}</td>
                     <td>${escapeHtml(item.name)}</td>
                     <td>
-                        <span class="badge ${isIncome ? 'badge-success' : 'badge-danger'}">
-                            ${item.type}
-                        </span>
+                        <span class="badge ${isIncome ? 'badge-success' : 'badge-danger'}">${item.type}</span>
                     </td>
-                    <td class="text-right money ${!isIncome ? 'money-negative' : ''}">${isIncome ? '+' : '-'}${this.formatMoney(item.amount)}</td>
+                    <td class="text-right money ${!isIncome?'money-negative':''}">${isIncome ? '+' : '-'}${this.formatMoney(item.amount)}</td>
                 </tr>
             `;
         });
-        tbody.innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">No transactions found.</td></tr>';
+        tbody.innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">No transactions.</td></tr>';
     },
 
     renderTribes() {
@@ -913,52 +915,55 @@ window.app = {
         container.innerHTML = '';
         DeptManager.getAll().map(dept => {
             const pledges = store.data.pledges.filter(p => p.department === dept);
-            const pledged = pledges.reduce((sum, p) => sum + p.amount, 0);
+            
+            const pledged = pledges.reduce((s,p)=>s+p.amount,0);
             let collected = 0;
             pledges.forEach(p => {
-                collected += store.data.transactions
-                    .filter(t => t.pledgeId === p.id)
-                    .reduce((sum, t) => sum + t.amount, 0);
+                collected += store.data.transactions.filter(t=>t.pledgeId===p.id).reduce((s,t)=>s+t.amount,0), 0);
             });
             const percent = pledged > 0 ? Math.round((collected/pledged)*100) : 0;
             const progressClass = percent < 50 ? 'danger' : (percent < 100 ? 'warn' : 'success');
-            return `
-                <div class="card">
-                    <div style="padding: 24px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                            <h3 style="margin:0;">${escapeHtml(dept)}</h3>
-                            <span class="badge badge-info">${pledges.length} Members</span>
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div style="padding:24px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:16px;">
+                        <h3>${escapeHtml(dept)}</h3>
+                        <span class="badge badge-info">${store.data.pledges.filter(p=>p.department===dept).length} Members</span>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <div style="width:100%; height:10px; background:#F3F4F6; border-radius:5px; overflow:hidden;">
+                            <div class="progress-fill ${progressClass}" style="width: ${percent}%; height: 100%; background:var(--primary); border-radius:5px;"></div>
                         </div>
-                        <div style="margin-bottom: 20px;">
-                            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:0.9rem;">
-                                <small>Collected: <strong>${this.formatMoney(collected)}</strong> / ${this.formatMoney(pledged)}</small>
-                                <small>${percent}%</small>
-                            </div>
-                            <div style="width:100%; height:8px; background:#E5E7EB; border-radius:4px; overflow:hidden;">
-                                <div class="progress-fill ${progressClass}" style="width: ${percent}%; height:100%; background:var(--primary); border-radius:4px;"></div>
-                            </div>
+                        <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:0.9rem;">
+                            <span class="text-muted">Collected</span>
+                            <span style="font-weight:700;">${this.formatMoney(collected)} / ${this.formatMoney(pledged)}</span>
                         </div>
-                        <div style="margin-top:16px; padding-top:16px; border-top:1px solid #E5E7EB; display:flex; justify-content:space-between; font-size:0.9rem;">
-                            <span class="text-muted">Balance</span>
-                            <span class="money ${ (pledged - collected) > 0 ? 'money-negative' : '' }">
-                                ${this.formatMoney(pledged - collected)}
-                            </span>
-                        </div>
+                    </div>
+                    <div style="margin-top:16px; padding-top:16px; border-top: 1px solid #E5E7EB; display:flex; justify-content: space-between; font-size: 0.9rem;">
+                        <span class="text-muted">Balance</span>
+                        <span class="money ${ (pledged - collected) > 0 ? 'money-negative' : '' }">
+                            ${this.formatMoney(pledged - collected)}
+                        </span>
                     </div>
                 </div>
             `;
-        }).forEach(card => container.appendChild(card));
+            container.appendChild(card);
+        });
     },
 
     renderSettingsList() {
         const list = document.getElementById('settings-phase-list');
-        list.innerHTML = '';
+        if(list) { list.innerHTML = ''; } // Fixed the missing backtick
+        
         store.data.phases.forEach(p => {
             const el = document.createElement('div');
             el.className = 'phase-item';
             el.innerHTML = `
                 <div>
-                    <div style="font-weight: 600;">${escapeHtml(p.name)}</div>
+                    <div style="font-weight:600;">${escapeHtml(p.name)}</div>
                     <small class="text-muted">Target: ${this.formatMoney(p.totalTarget)} • Due: ${this.formatDate(p.date)}</small>
                 </div>
                 <button class="btn btn-sm btn-danger" onclick="store.deletePhase(${p.id})">Delete</button>
@@ -974,13 +979,13 @@ window.app = {
     formatDate(isoString) {
         if(!isoString) return '';
         const d = new Date(isoString);
-        return d.toLocaleDateString('en-GB');
+        return d.toLocaleDateString('en-GB'); // DD/MM/YYYY
     },
 
     formatDateTime(isoString) {
         if(!isoString) return '';
         const d = new Date(isoString);
-        return d.toLocaleString('en-GB');
+        return d.toLocaleString('en-GB'); // DD/MM/YYYY, HH:MM
     },
 
     showToast(message, type = 'success') {
@@ -997,7 +1002,7 @@ window.app = {
     }
 };
 
-// --- CHARTING ENGINE ---
+// --- CHARTING ENGINE (Must exist for charts to work) ---
 const MiniCharts = {
     renderDonut(containerId, percentage, color) {
         const container = document.getElementById(containerId);
@@ -1006,12 +1011,14 @@ const MiniCharts = {
         const svg = document.createElementNS(svgNS, "svg");
         svg.setAttribute("viewBox", "0 0 36 36");
         svg.setAttribute("class", "chart");
+
         const bgCircle = document.createElementNS(svgNS, "path");
         bgCircle.setAttribute("d", "M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831");
         bgCircle.setAttribute("fill", "none");
         bgCircle.setAttribute("stroke", "#E5E7EB");
         bgCircle.setAttribute("stroke-width", "3");
         svg.appendChild(bgCircle);
+
         const strokeDasharray = `${percentage}, 100`;
         const fgCircle = document.createElementNS(svgNS, "path");
         fgCircle.setAttribute("d", "M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831");
@@ -1022,6 +1029,7 @@ const MiniCharts = {
         fgCircle.setAttribute("stroke-linecap", "round");
         fgCircle.setAttribute("class", "donut-segment");
         svg.appendChild(fgCircle);
+
         container.innerHTML = '';
         container.appendChild(svg);
     },
