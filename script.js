@@ -43,7 +43,6 @@ const store = {
         localStorage.setItem(DB_KEY, JSON.stringify(this.data));
         if(app) app.render();
     },
-    // ... Logic Methods (Add/Delete/Update) ...
     addPledge(n, d, a) {
         const existing = this.data.pledges.find(p => p.name.toLowerCase()===n.toLowerCase() && p.department.toLowerCase()===d.toLowerCase());
         if(existing) { existing.amount += a; this.save(); return existing.id; }
@@ -275,7 +274,7 @@ window.app = {
         const opts = depts.map(d=>`<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
         ['modal-dept-select','edit-dept-select','cash-dept'].forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = opts; });
     },
-    addPhaseFromForm(e) { e.preventDefault(); /* Logic simplified for brevity */ alert('Phase created (Simplified Logic)'); }
+    addPhaseFromForm(e) { e.preventDefault(); alert('Phase logic placeholder'); }
 };
 
 // --- CUSTOM CHARTING ENGINE (The "Wow" Factor) ---
@@ -284,13 +283,11 @@ const MiniCharts = {
         const container = document.getElementById(containerId);
         if(!container) return;
         
-        // Create SVG
         const svgNS = "http://www.w3.org/2000/svg";
         const svg = document.createElementNS(svgNS, "svg");
         svg.setAttribute("viewBox", "0 0 36 36");
         svg.setAttribute("class", "chart");
 
-        // Background Circle
         const bgCircle = document.createElementNS(svgNS, "path");
         bgCircle.setAttribute("d", "M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831");
         bgCircle.setAttribute("fill", "none");
@@ -298,7 +295,6 @@ const MiniCharts = {
         bgCircle.setAttribute("stroke-width", "3");
         svg.appendChild(bgCircle);
 
-        // Progress Circle
         const strokeDasharray = `${percentage}, 100`;
         const fgCircle = document.createElementNS(svgNS, "path");
         fgCircle.setAttribute("d", "M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831");
@@ -319,7 +315,7 @@ const MiniCharts = {
         if(!container) return;
         
         const maxVal = Math.max(...data.map(d=>d.target)) || 1;
-        const width = container.clientWidth;
+        const width = container.clientWidth || 400;
         const height = 250;
         const barWidth = (width / data.length) * 0.6;
         const gap = (width / data.length) * 0.4;
@@ -332,7 +328,7 @@ const MiniCharts = {
         svg.setAttribute("preserveAspectRatio", "none");
 
         data.forEach((d, i) => {
-            const h = (d.value / maxVal) * (height - 40); // Leave space for text
+            const h = (d.value / maxVal) * (height - 40);
             const x = i * (barWidth + gap) + (gap / 2);
             const y = height - h - 20;
 
@@ -342,22 +338,20 @@ const MiniCharts = {
             rect.setAttribute("width", barWidth);
             rect.setAttribute("height", h);
             rect.setAttribute("fill", "#059669");
-            rect.setAttribute("rx", 6); // Rounded corners
+            rect.setAttribute("rx", 6);
             rect.setAttribute("class", "bar");
             
-            // Simple Tooltip Title
             const title = document.createElementNS(svgNS, "title");
             title.textContent = `${d.label}: ${formatMoney(d.value)} / ${formatMoney(d.target)}`;
             rect.appendChild(title);
 
-            // Label
             const text = document.createElementNS(svgNS, "text");
             text.setAttribute("x", x + (barWidth/2));
             text.setAttribute("y", height - 5);
             text.setAttribute("text-anchor", "middle");
             text.setAttribute("fill", "#6B7280");
             text.setAttribute("font-size", "10");
-            text.textContent = d.label.substring(0, 3) + '..'; // Shorten label
+            text.textContent = d.label.substring(0, 3) + '..';
 
             svg.appendChild(rect);
             svg.appendChild(text);
