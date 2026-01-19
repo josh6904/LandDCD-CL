@@ -41,7 +41,7 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* ===== SIDEBAR (Horizontal Logo) ===== */
+/* ===== SIDEBAR (Centered Text Header - No Logo) ===== */
 aside {
     width: 280px;
     background: var(--sidebar-bg);
@@ -55,42 +55,34 @@ aside {
 
 .brand {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 16px;
+    justify-content: center;
+    text-align: center;
+    gap: 4px;
     padding: 0 8px 32px 8px;
     border-bottom: 1px solid rgba(255,255,255,0.08);
     margin-bottom: 32px;
 }
 
-/* Small Logo Styling */
-.brand-logo {
-    width: 52px;
-    height: 52px;
-    object-fit: contain;
-    border-radius: 12px;
-    /* Subtle border for logo definition */
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
-    background: white;
-}
-
-.brand-text {
-    display: flex;
-    flex-direction: column;
-}
+.brand-text { display: flex; flex-direction: column; }
 
 .brand-name {
-    font-size: 1.4rem;
+    font-size: 2rem;
     font-weight: 800;
     letter-spacing: -0.5px;
     line-height: 1.1;
+    background: linear-gradient(to bottom right, #ffffff, #9CA3AF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .brand-subtitle {
-    font-size: 0.7rem;
-    color: #9CA3AF;
+    font-size: 0.75rem;
+    color: #6B7280;
     font-weight: 600;
-    letter-spacing: 1.2px;
-    margin-top: 2px;
+    letter-spacing: 1.5px;
+    margin-top: 4px;
     text-transform: uppercase;
 }
 
@@ -132,7 +124,6 @@ main {
     position: relative;
 }
 
-/* Scrollbar Styling */
 main::-webkit-scrollbar { width: 8px; }
 main::-webkit-scrollbar-track { background: transparent; }
 main::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 10px; }
@@ -189,9 +180,9 @@ h1 {
 .btn-danger { background: #FEF2F2; color: #DC2626; border: 1px solid #FEE2E2; }
 .btn-danger:hover { background: #FEE2E2; }
 
-.btn-icon-text span { display: flex; align-items: center; gap: 6px; }
+.btn-sm { padding: 6px 14px; font-size: 0.85rem; }
 
-/* ===== KPI CARDS (New Visuals) ===== */
+/* ===== KPI CARDS ===== */
 .kpi-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -219,7 +210,6 @@ h1 {
     box-shadow: var(--shadow-float);
 }
 
-/* Decorative Background Gradient */
 .kpi-card::before {
     content: '';
     position: absolute;
@@ -296,7 +286,7 @@ svg.chart { width: 100%; height: 100%; overflow: visible; }
     margin-top: 24px;
 }
 
-/* ===== TABLES (Cleaner) ===== */
+/* ===== TABLES ===== */
 .table-container {
     background: white;
     border-radius: var(--radius-lg);
@@ -401,8 +391,9 @@ input:focus, select:focus {
         align-items: center; padding: 16px;
         border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1);
     }
-    .brand { border: none; margin: 0; padding: 0; }
+    .brand { border: none; margin: 0; padding: 0; flex-direction: row; gap: 12px; }
     .brand-subtitle { display: none; }
+    .brand-name { font-size: 1.2rem; }
     .nav-group {
         flex-direction: row; position: fixed; bottom: 0; left: 0;
         width: 100%; background: white; color: #111827;
